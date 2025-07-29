@@ -1,77 +1,42 @@
-package com.example.demo;
+package com.example.entities;
 
-
-import javafx.beans.property.*;
+import com.example.exceptions.BooksException;
 
 public class Book {
-    private final IntegerProperty bookCode;
-    private final StringProperty bookName;
-    private final IntegerProperty price;
-    private final IntegerProperty quantity;
-    private final IntegerProperty cost;
+    private String isbn;
+    private String title;
+    private String author;
+    private String category;
+    private int quantity; // 🔥 REQUIRED for issue/return logic
 
-    // Constructor for inventory books (without initial cost)
-    public Book(int bookCode, String bookName, int price, int quantity) {
-        this(bookCode, bookName, price, quantity, 0);
+    public Book(String isbn, String title, String author, String category, int quantity) {
+        if (quantity < 0) {
+            throw new BooksException("Invalid Quantity : Quantity should be greater than 0");
+        }
+        this.isbn = isbn;
+        this.title = title;
+        this.author = author;
+        this.category = category;
+        this.quantity = quantity;
     }
 
-    // Constructor for invoice books (with cost)
-    public Book(int bookCode, String bookName, int price, int quantity, int cost) {
-        this.bookCode = new SimpleIntegerProperty(bookCode);
-        this.bookName = new SimpleStringProperty(bookName);
-        this.price = new SimpleIntegerProperty(price);
-        this.quantity = new SimpleIntegerProperty(quantity);
-        this.cost = new SimpleIntegerProperty(cost);
-    }
+    // ✅ Getters
+    public String getIsbn() { return isbn; }
+    public String getTitle() { return title; }
+    public String getAuthor() { return author; }
+    public String getCategory() { return category; }
+    public int getQuantity() { return quantity; }
 
-    // Getters
-    public int getBookCode() {
-        return bookCode.get();
-    }
+    // ✅ Setters
+    public void setIsbn(String isbn) { this.isbn = isbn; }
+    public void setTitle(String title) { this.title = title; }
+    public void setAuthor(String author) { this.author = author; }
+    public void setCategory(String category) { this.category = category; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
 
-    public String getBookName() {
-        return bookName.get();
-    }
-
-    public int getPrice() {
-        return price.get();
-    }
-
-    public int getQuantity() {
-        return quantity.get();
-    }
-
-    public int getCost() {
-        return cost.get();
-    }
-
-    // Property methods (needed for TableView bindings)
-    public IntegerProperty bookCodeProperty() {
-        return bookCode;
-    }
-
-    public StringProperty bookNameProperty() {
-        return bookName;
-    }
-
-    public IntegerProperty priceProperty() {
-        return price;
-    }
-
-    public IntegerProperty quantityProperty() {
-        return quantity;
-    }
-
-    public IntegerProperty costProperty() {
-        return cost;
-    }
-
-    // Setters
-    public void setQuantity(int quantity) {
-        this.quantity.set(quantity);
-    }
-
-    public void setCost(int cost) {
-        this.cost.set(cost);
+    @Override
+    public String toString() {
+        return String.format("[ISBN: %s | Title: %s | Author: %s | Category: %s | Quantity: %d]",
+                isbn, title, author, category, quantity);
     }
 }
