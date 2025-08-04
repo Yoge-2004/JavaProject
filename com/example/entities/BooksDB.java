@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class BooksDB {
     private static final Map<String, Book> books = new LinkedHashMap<>(); // ISBN -> Book
-    private static final Map<String, LocalDate> issuedBooks = new LinkedHashMap<>(); // ISBN -> Issue Date
+    private static final Map<String, Integer> issuedBooks = new LinkedHashMap<>(); // ISBN -> Issue Date
 
     private static BooksDB instance = null;
 
@@ -91,7 +91,7 @@ public class BooksDB {
         book.setQuantity(book.getQuantity() - 1);
         books.put(isbn, book);
 
-        issuedBooks.put(isbn, LocalDate.now());
+        issuedBooks.put(isbn, issuedBooks.getOrDefault(isbn,0) + 1);
 
         System.out.println("Issued: " + book.getTitle() + " on " + LocalDate.now());
         return true;
@@ -104,10 +104,18 @@ public class BooksDB {
         }
 
         Book book = books.get(isbn);
-        book.setQuantity(book.getQuantity() + 1);
-        books.put(isbn, book);
+        if (book == null) {
+            throw new BooksException("Book not found in the library.");
+        }
 
-        issuedBooks.remove(isbn);
+        book.setQuantity(book.getQuantity() + 1);
+
+        int issuedCount = issuedBooks.get(isbn);
+        if (issuedCount == 1) {
+            issuedBooks.remove(isbn);
+        } else {
+            issuedBooks.put(isbn, issuedCount - 1); // decrement issued count
+        }
 
         System.out.println("Returned: " + book.getTitle());
         return true;
