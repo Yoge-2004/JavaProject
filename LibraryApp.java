@@ -2,68 +2,128 @@ package com.example.application;
 
 import com.example.entities.Book;
 import com.example.services.BookService;
+import com.example.services.UserService;
+import com.example.exceptions.ValidationException;
+import javafx.animation.*;
 import javafx.application.Application;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
+import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
+import javafx.scene.paint.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+
+import java.util.List;
 
 public class LibraryApp extends Application {
 
-    private TableView<Book> tableView;
-    private ObservableList<Book> bookList;
+    private String loggedInUser = null;
+    private ListView<String> bookListView;
 
-    private TextField isbnField, titleField, authorField, categoryField, quantityField;
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("📚 Library Management System");
+        primaryStage.setTitle("📚 Library Galaxy");
 
-        // Input Fields
-        isbnField = new TextField(); isbnField.setPromptText("ISBN");
-        titleField = new TextField(); titleField.setPromptText("Title");
-        authorField = new TextField(); authorField.setPromptText("Author");
-        categoryField = new TextField(); categoryField.setPromptText("Category");
-        quantityField = new TextField(); quantityField.setPromptText("Quantity");
+        VBox loginPane = createLoginPane(primaryStage);
+        Scene loginScene = new Scene(loginPane, 500, 350);
+        applyFadeTransition(loginPane);
 
-        // Table Setup
-        tableView = new TableView<>();
-        bookList = FXCollections.observableArrayList(BookService.getAllBooksList());
-        tableView.setItems(bookList);
+        primaryStage.setScene(loginScene);
+        primaryStage.show();
+    }
 
-        TableColumn<Book, String> isbnCol = new TableColumn<>("ISBN");
-        isbnCol.setCellValueFactory(new PropertyValueFactory<>("isbn"));
+    private VBox createLoginPane(Stage stage) {
+        Label title = new Label("🚀 Welcome to Library Galaxy");
+        title.setFont(Font.font("Verdana", FontWeight.BOLD, 20));
+        title.setTextFill(Color.web("#ffffff"));
 
-        TableColumn<Book, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
+        TextField userField = new TextField();
+        userField.setPromptText("Username");
 
-        TableColumn<Book, String> authorCol = new TableColumn<>("Author");
-        authorCol.setCellValueFactory(new PropertyValueFactory<>("author"));
+        PasswordField passField = new PasswordField();
+        passField.setPromptText("Password");
 
-        TableColumn<Book, String> categoryCol = new TableColumn<>("Category");
-        categoryCol.setCellValueFactory(new PropertyValueFactory<>("category"));
+        Button loginBtn = createStyledButton("🔓 Login");
+        Button registerBtn = createStyledButton("📝 Register");
 
-        TableColumn<Book, String> quantityCol = new TableColumn<>("Quantity");
-        quantityCol.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().getQuantity())));
+        Label messageLabel = new Label();
+        messageLabel.setTextFill(Color.YELLOW);
 
-        tableView.getColumns().addAll(isbnCol, titleCol, authorCol, categoryCol, quantityCol);
-        tableView.setPrefHeight(300);
+        loginBtn.setOnAction(e -> {
+            try {
+                if (UserService.login(userField.getText(), passField.getText())) {
+                    loggedInUser = userField.getText();
+                    BorderPane mainPane = createMainPane();
+                    applyFadeTransition(mainPane);
+                    stage.setScene(new Scene(mainPane, 1100, 650));
+                } else {
+                    messageLabel.setText("❌ Invalid credentials.");
+                }
+            } catch (ValidationException ex) {
+                messageLabel.setText("❌ " + ex.getMessage());
+            }
+        });
 
-        // Buttons
-        Button addBtn = new Button("Add Book");
-        Button updateBtn = new Button("Update Book");
-        Button deleteBtn = new Button("Delete Book");
-        Button searchBtn = new Button("Search");
-        Button issueBtn = new Button("Issue Book");
-        Button returnBtn = new Button("Return Book");
-        Button refreshBtn = new Button("Refresh");
+        registerBtn.setOnAction(e -> {
+            try {
+                UserService.createUser(userField.getText(), passField.getText());
+                messageLabel.setText("✅ Registered successfully.");
+                messageLabel.setTextFill(Color.LIMEGREEN);
+            } catch (ValidationException ex) {
+                messageLabel.setText("❌ " + ex.getMessage());
+                messageLabel.setTextFill(Color.RED);
+            }
+        });
 
-        addBtn.setOnAction(e -> {
+        VBox box = new VBox(15, title, userField, passField, loginBtn, registerBtn, messageLabel);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(30));
+        box.setBackground(new Background(new BackgroundFill(
+                new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
+                        new Stop(0, Color.web("#1e3c72")),
+                        new Stop(1, Color.web("#2a5298"))),
+                CornerRadii.EMPTY, Insets.EMPTY)));
+
+        return box;
+    }
+
+    private BorderPane createMainPane() {
+        BorderPane root = new BorderPane();
+
+        Label header = new Label("🌟 Welcome, " + loggedInUser + "!");
+        header.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        header.setTextFill(Color.web("#ffffff"));
+        header.setPadding(new Insets(10));
+        header.setBackground(new Background(new BackgroundFill(Color.web("#0077be"), CornerRadii.EMPTY, Insets.EMPTY)));
+
+        VBox controls = new VBox(10);
+        controls.setPadding(new Insets(15));
+        controls.setBackground(new Background(new BackgroundFill(Color.web("#d0f0fd"), CornerRadii.EMPTY, Insets.EMPTY)));
+
+        TextField isbnField = new TextField(); isbnField.setPromptText("ISBN");
+        TextField titleField = new TextField(); titleField.setPromptText("Title");
+        TextField authorField = new TextField(); authorField.setPromptText("Author");
+        TextField categoryField = new TextField(); categoryField.setPromptText("Category");
+        TextField quantityField = new TextField(); quantityField.setPromptText("Quantity");
+
+        Button addBookBtn = createStyledButton("➕ Add Book");
+        Button updateBookBtn = createStyledButton("✏️ Update Book");
+        Button deleteBookBtn = createStyledButton("🗑️ Delete Book");
+        Button issueBookBtn = createStyledButton("📤 Issue Book");
+        Button returnBookBtn = createStyledButton("📥 Return Book");
+        Button refreshBtn = createStyledButton("🔄 Refresh List");
+
+        addBookBtn.setOnAction(e -> {
             try {
                 BookService.createBook(
                         isbnField.getText(),
@@ -72,14 +132,13 @@ public class LibraryApp extends Application {
                         categoryField.getText(),
                         Integer.parseInt(quantityField.getText())
                 );
-                clearFields();
-                refreshTable();
+                refreshListView();
             } catch (Exception ex) {
-                showAlert("Error", "Invalid input or Book already exists.");
+                showAlert("Error", ex.getMessage());
             }
         });
 
-        updateBtn.setOnAction(e -> {
+        updateBookBtn.setOnAction(e -> {
             try {
                 Book book = new Book(
                         isbnField.getText(),
@@ -89,93 +148,93 @@ public class LibraryApp extends Application {
                         Integer.parseInt(quantityField.getText())
                 );
                 BookService.updateBook(book);
-                clearFields();
-                refreshTable();
+                refreshListView();
             } catch (Exception ex) {
-                showAlert("Update Failed", ex.getMessage());
+                showAlert("Error", ex.getMessage());
             }
         });
 
-        deleteBtn.setOnAction(e -> {
+        deleteBookBtn.setOnAction(e -> {
             try {
                 BookService.deleteBook(isbnField.getText());
-                clearFields();
-                refreshTable();
+                refreshListView();
             } catch (Exception ex) {
-                showAlert("Delete Failed", ex.getMessage());
+                showAlert("Error", ex.getMessage());
             }
         });
 
-        searchBtn.setOnAction(e -> {
-            try {
-                Book result = BookService.searchByTitleOrAuthorOrCategory(
-                        titleField.getText(),
-                        authorField.getText(),
-                        categoryField.getText()
-                );
-                bookList.setAll(result);
-            } catch (Exception ex) {
-                showAlert("Not Found", ex.getMessage());
-            }
-        });
-
-        issueBtn.setOnAction(e -> {
+        issueBookBtn.setOnAction(e -> {
             try {
                 BookService.issueBook(isbnField.getText());
-                refreshTable();
+                refreshListView();
             } catch (Exception ex) {
-                showAlert("Issue Failed", ex.getMessage());
+                showAlert("Error", ex.getMessage());
             }
         });
 
-        returnBtn.setOnAction(e -> {
+        returnBookBtn.setOnAction(e -> {
             try {
                 BookService.returnBook(isbnField.getText());
-                refreshTable();
+                refreshListView();
             } catch (Exception ex) {
-                showAlert("Return Failed", ex.getMessage());
+                showAlert("Error", ex.getMessage());
             }
         });
 
-        refreshBtn.setOnAction(e -> refreshTable());
+        refreshBtn.setOnAction(e -> refreshListView());
 
-        // Layout
-        HBox fields = new HBox(10, isbnField, titleField, authorField, categoryField, quantityField);
-        HBox actions = new HBox(10, addBtn, updateBtn, deleteBtn, searchBtn, issueBtn, returnBtn, refreshBtn);
-        fields.setPadding(new Insets(10));
-        actions.setPadding(new Insets(10));
+        controls.getChildren().addAll(
+                new Label("📘 Book Management"),
+                isbnField, titleField, authorField, categoryField, quantityField,
+                addBookBtn, updateBookBtn, deleteBookBtn,
+                issueBookBtn, returnBookBtn, refreshBtn
+        );
 
-        VBox root = new VBox(10, fields, actions, tableView);
-        root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #f0f8ff;");
+        bookListView = new ListView<>();
+        refreshListView();
+        bookListView.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 14px;");
 
-        // Scene
-        Scene scene = new Scene(root, 1000, 500);
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        VBox centerPane = new VBox(10, new Label("📚 Book List:"), bookListView);
+        centerPane.setPadding(new Insets(15));
+        centerPane.setBackground(new Background(new BackgroundFill(Color.web("#f0ffff"), CornerRadii.EMPTY, Insets.EMPTY)));
+
+        root.setTop(header);
+        root.setLeft(controls);
+        root.setCenter(centerPane);
+
+        return root;
     }
 
-    private void refreshTable() {
-        bookList.setAll(BookService.getAllBooksList());
+    private void refreshListView() {
+        List<Book> books = BookService.getAllBooksList();
+        ObservableList<String> bookStrings = FXCollections.observableArrayList();
+        for (Book book : books) {
+            bookStrings.add(book.toString());
+        }
+        bookListView.setItems(bookStrings);
     }
 
-    private void clearFields() {
-        isbnField.clear();
-        titleField.clear();
-        authorField.clear();
-        categoryField.clear();
-        quantityField.clear();
+    private Button createStyledButton(String text) {
+        Button btn = new Button(text);
+        btn.setStyle("-fx-background-color: #00bfff; -fx-text-fill: white; -fx-font-weight: bold;");
+        btn.setEffect(new DropShadow());
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #009acd; -fx-text-fill: white;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #00bfff; -fx-text-fill: white;"));
+        return btn;
     }
 
-    private void showAlert(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+    private void applyFadeTransition(Pane pane) {
+        FadeTransition ft = new FadeTransition(Duration.millis(800), pane);
+        ft.setFromValue(0.0);
+        ft.setToValue(1.0);
+        ft.play();
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(content);
+        alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }
