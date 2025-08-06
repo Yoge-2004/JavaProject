@@ -21,7 +21,6 @@ import javafx.util.Duration;
 
 import java.util.List;
 
-@SuppressWarnings("")
 public class LibraryApp extends Application {
 
     private String loggedInUser = null;
@@ -247,3 +246,4 @@ public class LibraryApp extends Application {
         alert.showAndWait();
     }
 }
+
