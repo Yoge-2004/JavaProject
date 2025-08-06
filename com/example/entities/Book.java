@@ -2,12 +2,14 @@ package com.example.entities;
 
 import com.example.exceptions.BooksException;
 
-public class Book {
+import java.io.Serializable;
+
+public class Book implements Serializable {
     private String isbn;
     private String title;
     private String author;
     private String category;
-    private int quantity; // 🔥 REQUIRED for issue/return logic
+    private int quantity; //REQUIRED for issue/return logic
 
     public Book(String isbn, String title, String author, String category, int quantity) {
         if (quantity < 0) {
