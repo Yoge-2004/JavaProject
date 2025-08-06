@@ -1,44 +1,58 @@
 package com.example.entities;
 
 import com.example.exceptions.ValidationException;
+import com.example.storage.DataStorage;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class UsersDB {
-    private static UsersDB instance = null;
+public class UsersDB implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private static final String USER_SER_FILE = "data/users_db.ser";
+
+    private static UsersDB instance;
     private Map<String, String> users;
 
     private UsersDB() {
         users = new LinkedHashMap<>();
     }
 
-    public static UsersDB getInstance() {
-        if (instance == null) {
+    static {
+        try {
+            instance = DataStorage.readSerializedUsers(USER_SER_FILE);
+            if (instance == null) {
+                instance = new UsersDB();
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Failed to load users from .ser file. Initializing empty DB.");
             instance = new UsersDB();
         }
+    }
+
+    public static UsersDB getInstance() {
         return instance;
     }
 
     public boolean addUser(String userName, String password) {
         users.put(userName, password);
+        persist();
         return true;
     }
 
     public boolean modifyUserPassword(String userName, String newPassword) {
-        if (!users.containsKey(userName)) {
-            throw new ValidationException("User not found.");
-        }
-        users.replace(userName, newPassword);
+        validateUserExists(userName);
+        users.put(userName, newPassword);
+        persist();
         return true;
     }
 
     public boolean modifyUserName(String oldUserName, String newUserName) {
-        if (!users.containsKey(oldUserName)) {
-            throw new ValidationException("User not found.");
-        }
+        validateUserExists(oldUserName);
         String password = users.remove(oldUserName);
         users.put(newUserName, password);
+        persist();
         return true;
     }
 
@@ -47,15 +61,14 @@ public class UsersDB {
     }
 
     public String getPassword(String userName) {
-        if (!containsUser(userName)) {
-            throw new ValidationException("Invalid username.");
-        }
+        validateUserExists(userName);
         return users.get(userName);
     }
 
     public boolean deleteUser(String userName, String password) {
         if (containsUser(userName) && users.get(userName).equals(password)) {
             users.remove(userName);
+            persist();
             return true;
         }
         throw new ValidationException("Delete Failed: Invalid credentials.");
@@ -67,5 +80,23 @@ public class UsersDB {
             return;
         }
         users.forEach((username, password) -> System.out.println(username + " -> ********"));
+    }
+
+    public Map<String, String> fetchAllUsers() {
+        return new LinkedHashMap<>(users);
+    }
+
+    private void validateUserExists(String userName) {
+        if (!users.containsKey(userName)) {
+            throw new ValidationException("User not found.");
+        }
+    }
+
+    private void persist() {
+        try {
+            DataStorage.writeSerializedUsers(USER_SER_FILE, this);
+        } catch (IOException e) {
+            System.err.println("Failed to persist user data: " + e.getMessage());
+        }
     }
 }
