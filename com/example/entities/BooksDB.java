@@ -29,7 +29,7 @@ public class BooksDB implements Serializable {
             if (instance == null) {
                 instance = new BooksDB();
             }
-            instance.loadIssuedBooks(); // ✅ Always reload issuedBooks from separate file
+            instance.loadIssuedBooks();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Failed to load books from .ser file. Initializing empty DB.");
             instance = new BooksDB();
@@ -200,3 +200,4 @@ public class BooksDB implements Serializable {
         }
     }
 }
+
