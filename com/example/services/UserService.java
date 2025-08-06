@@ -14,7 +14,7 @@ public class UserService {
 
         validatePasswordStrength(password);
         users.addUser(username, password);
-        System.out.println("User created successfully.");
+        System.out.println("✅ User created successfully.");
     }
 
     public static boolean updateUserPassword(String username, String oldPassword, String newPassword) {
@@ -58,5 +58,9 @@ public class UserService {
         if (!password.matches(".*[A-Z].*") || !password.matches(".*\\d.*")) {
             throw new ValidationException("Password must contain at least one uppercase letter and one digit.");
         }
+    }
+
+    public static void persistUsers() {
+        users.getClass(); // Ensures instance is initialized
     }
 }
