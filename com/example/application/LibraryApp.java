@@ -4,7 +4,7 @@ import com.example.entities.Book;
 import com.example.services.BookService;
 import com.example.services.UserService;
 import com.example.exceptions.ValidationException;
-import javafx.animation.*;
+import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,14 +21,13 @@ import javafx.util.Duration;
 
 import java.util.List;
 
+@SuppressWarnings("")
 public class LibraryApp extends Application {
 
     private String loggedInUser = null;
     private ListView<String> bookListView;
 
-    public static void main(String[] args) {
-        launch(args);
-    }
+    public static void main(String[] args) { launch(args); }
 
     @Override
     public void start(Stage primaryStage) {
@@ -79,6 +78,7 @@ public class LibraryApp extends Application {
                 UserService.createUser(userField.getText(), passField.getText());
                 messageLabel.setText("✅ Registered successfully.");
                 messageLabel.setTextFill(Color.LIMEGREEN);
+                UserService.persistUsers();
             } catch (ValidationException ex) {
                 messageLabel.setText("❌ " + ex.getMessage());
                 messageLabel.setTextFill(Color.RED);
@@ -132,7 +132,7 @@ public class LibraryApp extends Application {
                         categoryField.getText(),
                         Integer.parseInt(quantityField.getText())
                 );
-                refreshListView();
+                persistAndRefresh();
             } catch (Exception ex) {
                 showAlert("Error", ex.getMessage());
             }
@@ -148,7 +148,7 @@ public class LibraryApp extends Application {
                         Integer.parseInt(quantityField.getText())
                 );
                 BookService.updateBook(book);
-                refreshListView();
+                persistAndRefresh();
             } catch (Exception ex) {
                 showAlert("Error", ex.getMessage());
             }
@@ -157,7 +157,7 @@ public class LibraryApp extends Application {
         deleteBookBtn.setOnAction(e -> {
             try {
                 BookService.deleteBook(isbnField.getText());
-                refreshListView();
+                persistAndRefresh();
             } catch (Exception ex) {
                 showAlert("Error", ex.getMessage());
             }
@@ -166,7 +166,7 @@ public class LibraryApp extends Application {
         issueBookBtn.setOnAction(e -> {
             try {
                 BookService.issueBook(isbnField.getText());
-                refreshListView();
+                persistAndRefresh();
             } catch (Exception ex) {
                 showAlert("Error", ex.getMessage());
             }
@@ -175,7 +175,7 @@ public class LibraryApp extends Application {
         returnBookBtn.setOnAction(e -> {
             try {
                 BookService.returnBook(isbnField.getText());
-                refreshListView();
+                persistAndRefresh();
             } catch (Exception ex) {
                 showAlert("Error", ex.getMessage());
             }
@@ -212,6 +212,15 @@ public class LibraryApp extends Application {
             bookStrings.add(book.toString());
         }
         bookListView.setItems(bookStrings);
+    }
+
+    private void persistAndRefresh() {
+        try {
+            BookService.persistBooks();
+            refreshListView();
+        } catch (Exception ex) {
+            showAlert("Persistence Error", ex.getMessage());
+        }
     }
 
     private Button createStyledButton(String text) {
