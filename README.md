@@ -24,7 +24,7 @@ Welcome to **JavaProject** — a repository containing Java-based solutions, uti
 ## 📂 Directory Structure
 
 ```
-JavaProject/
+LMSJavaFX/
 ├── src/
 │   ├── main/
 │   │   └── java/
