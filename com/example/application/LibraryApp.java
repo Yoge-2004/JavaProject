@@ -15,6 +15,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -27,6 +28,7 @@ import javafx.scene.Node;
 import javafx.stage.Modality;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -1369,7 +1371,6 @@ public class LibraryApp extends Application {
         }
     }
 
-
     /**
      * Changes the user's password with validation.
      */
@@ -1447,7 +1448,7 @@ public class LibraryApp extends Application {
         if (password.matches(".*[a-z].*")) score++;
         if (password.matches(".*[A-Z].*")) score++;
         if (password.matches(".*[0-9].*")) score++;
-        if (password.matches(".*[!@#$%^&*()_+=\\-\\[\\]{};':\"\\\\|,.<>\\/?].*")) score++;
+        if (password.matches(".*[!@#$%^&*()_+=\\-\\[\\]{};':\"\\\\|,./<>\\/?].*")) score++;
 
         if (score <= 2) return "Weak";
         if (score <= 4) return "Medium";
@@ -1514,7 +1515,7 @@ public class LibraryApp extends Application {
     }
 
     /**
-     * Shows data management options.
+     * Shows data management options with FIXED backup button.
      */
     private void showDataManagementDialog() {
         Dialog<String> dialog = new Dialog<>();
@@ -1534,26 +1535,52 @@ public class LibraryApp extends Application {
 
         Button backupButton = createStyledButton("💾 Create Backup", BUTTON_STYLE_SUCCESS);
         backupButton.setPrefWidth(200);
+        // FIXED BACKUP BUTTON HANDLER
         backupButton.setOnAction(e -> {
-            try {
-                // Create backups of all data files
-                String timestamp = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-                boolean success = true;
-
-                success &= com.example.storage.DataStorage.createBackup("data/users_db.ser");
-                success &= com.example.storage.DataStorage.createBackup("data/books_db.ser");
-                success &= com.example.storage.DataStorage.createBackup("data/issued_books.ser");
-                success &= com.example.storage.DataStorage.createBackup("data/borrower_details.ser");
-                success &= com.example.storage.DataStorage.createBackup("data/issue_records.ser");
-
-                if (success) {
-                    showSuccessAlert("Database backup created successfully!\nBackup files created with timestamp: " + timestamp);
-                } else {
-                    showErrorAlert("Some backup operations failed. Check the console for details.");
-                }
-            } catch (Exception ex) {
-                showErrorAlert("Backup failed: " + ex.getMessage());
+            // Show loading state
+            if (loadingIndicator != null) {
+                loadingIndicator.setVisible(true);
+                statusLabel.setText("Creating backup...");
             }
+
+            // Run backup operation in background thread
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                    boolean success = true;
+
+                    success &= com.example.storage.DataStorage.createBackup("data/users_db.ser");
+                    success &= com.example.storage.DataStorage.createBackup("data/books_db.ser");
+                    success &= com.example.storage.DataStorage.createBackup("data/issued_books.ser");
+                    success &= com.example.storage.DataStorage.createBackup("data/borrower_details.ser");
+                    success &= com.example.storage.DataStorage.createBackup("data/issue_records.ser");
+
+                    return Map.of("success", success, "timestamp", timestamp);
+                } catch (Exception ex) {
+                    return Map.of("success", false, "error", ex.getMessage());
+                }
+            }).thenAcceptAsync(result -> {
+                // Update UI on JavaFX thread
+                Platform.runLater(() -> {
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                        statusLabel.setText("Ready");
+                    }
+
+                    Boolean success = (Boolean) result.get("success");
+                    if (success) {
+                        String timestamp = (String) result.get("timestamp");
+                        showSuccessAlert("Database backup created successfully!\n\nBackup files created with timestamp: " + timestamp);
+                    } else {
+                        String error = (String) result.get("error");
+                        if (error != null) {
+                            showErrorAlert("Backup failed: " + error);
+                        } else {
+                            showErrorAlert("Some backup operations failed. Check the console for details.");
+                        }
+                    }
+                });
+            });
         });
 
         backupSection.getChildren().addAll(backupTitle, backupButton);
@@ -1565,7 +1592,7 @@ public class LibraryApp extends Application {
 
         Button statisticsButton = createStyledButton("📊 View Statistics", BUTTON_STYLE_PRIMARY);
         statisticsButton.setPrefWidth(200);
-        statisticsButton.setOnAction(e -> showBasicStatisticsStage());
+        statisticsButton.setOnAction(this::showBasicStatisticsStage);
 
         statsSection.getChildren().addAll(statsTitle, statisticsButton);
 
@@ -1598,7 +1625,7 @@ public class LibraryApp extends Application {
      * Shows basic statistics information.
      */
 
-    private void showBasicStatisticsStage() {
+    private void showBasicStatisticsStage(ActionEvent actionEvent) {
         try {
             int totalUsers = UserService.getUserCount();
             int totalBooks = booksList.size();
@@ -1617,10 +1644,13 @@ public class LibraryApp extends Application {
                     LocalDate.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
             );
 
+            // Close the invoking dialog
+            Stage currentStage = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
+            currentStage.close();
+
             // Create new Stage for statistics
             Stage stage = new Stage();
             stage.setTitle("Library Statistics");
-            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(false);
 
             // Create UI content
@@ -1648,9 +1678,12 @@ public class LibraryApp extends Application {
             Scene scene = new Scene(vbox);
             stage.setScene(scene);
 
+            vbox.applyCss();
+            vbox.layout();
+
             stage.setResizable(true);
             stage.setOnShown(event -> statsArea.requestFocus());
-            stage.show();
+            Platform.runLater(() -> stage.show());
 
 
         } catch (Exception e) {
@@ -1706,28 +1739,74 @@ public class LibraryApp extends Application {
         messageLabel.setText("");
     }
 
+    // FIXED ALERT METHODS - These now properly handle rendering issues
+    /**
+     * FIXED: Shows error alert with proper threading and sizing.
+     */
     private void showErrorAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText("An error occurred");
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("An Error Occurred");
+            alert.setContentText(message);
+
+            // Ensure proper sizing and visibility
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setMinWidth(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setPrefWidth(450);
+            alert.setResizable(true);
+
+            // Force refresh of the dialog pane
+            alert.getDialogPane().autosize();
+
+            alert.showAndWait();
+        });
     }
 
+    /**
+     * FIXED: Shows success alert with proper threading and sizing.
+     */
     private void showSuccessAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Success");
-        alert.setHeaderText("Operation completed successfully");
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Success");
+            alert.setHeaderText("Operation Completed Successfully");
+            alert.setContentText(message);
+
+            // Ensure proper sizing and visibility
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setMinWidth(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setPrefWidth(450);
+            alert.setResizable(true);
+
+            // Force refresh of the dialog pane
+            alert.getDialogPane().autosize();
+
+            alert.showAndWait();
+        });
     }
 
+    /**
+     * FIXED: Shows info alert with proper threading and sizing.
+     */
     private void showInfoAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Information");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+
+            // Ensure proper sizing and visibility
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setMinWidth(Region.USE_PREF_SIZE);
+            alert.getDialogPane().setPrefWidth(450);
+            alert.setResizable(true);
+
+            // Force refresh of the dialog pane
+            alert.getDialogPane().autosize();
+
+            alert.showAndWait();
+        });
     }
 
     private void handleLogout() {
