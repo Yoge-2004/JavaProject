@@ -22,7 +22,7 @@ Welcome to **LMSJavaFX** — a Library Management System built with JavaFX. This
 <!-- Add images relevant to your project below. Replace image1.png with your actual image filename or URL. -->
 ![Login Screen](assets/screenshots/login.png)
 ![Dashboard](assets/screenshots/dashboard.png)
-![Issued Books](assets/screenshots/dashboard_issued_books.png)
+![Issued Books](assets/screenshots/dashboard_books_issued.png)
 <!-- Add more images as needed -->
 
 ## 📂 Directory Structure
